@@ -1,0 +1,100 @@
+name: Build Android TV APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Setup Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Init Capacitor (if not exists)
+        run: |
+          if [ ! -f "android/app/build.gradle" ]; then
+            npx cap add android
+          fi
+      
+      - name: Sync web assets
+        run: npx cap sync android
+      
+      - name: Patch AndroidManifest for TV
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          
+          # Добавляем Leanback features и launcher
+          if ! grep -q "android.software.leanback" "$MANIFEST"; then
+            sed -i 's|<application|<uses-feature android:name="android.software.leanback" android:required="true" />\n    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />\n    <uses-permission android:name="android.permission.INTERNET" />\n\n    <application|' "$MANIFEST"
+          fi
+          
+          # Добавляем LEANBACK_LAUNCHER в главную activity
+          if ! grep -q "LEANBACK_LAUNCHER" "$MANIFEST"; then
+            sed -i 's|<category android:name="android.intent.category.LAUNCHER" />|<category android:name="android.intent.category.LAUNCHER" />\n                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />|' "$MANIFEST"
+          fi
+          
+          # Разрешаем баннер для TV
+          if ! grep -q "android:banner" "$MANIFEST"; then
+            sed -i 's|android:label="@string/app_name"|android:label="@string/app_name"\n            android:banner="@mipmap/ic_launcher"|' "$MANIFEST"
+          fi
+          
+          echo "=== AndroidManifest.xml ==="
+          cat "$MANIFEST"
+      
+      - name: Grant execute permission to gradlew
+        run: chmod +x android/gradlew
+      
+      - name: Build Debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+      
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: kinopotok-tv-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+      
+      - name: Create Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: "КиноПоток TV v1.0.${{ github.run_number }}"
+          body: |
+            🎬 Автоматическая сборка Android TV приложения
+            
+            **Что внутри:**
+            - Web-приложение на Capacitor
+            - Leanback launcher (для Android TV)
+            - Источник данных: FM-DB API
+            
+            **Установка:**
+            ```
+            adb install app-debug.apk
+            ```
+          files: android/app/build/outputs/apk/debug/app-de «bug.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
