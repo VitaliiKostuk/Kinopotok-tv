@@ -1,0 +1,16 @@
+{
+  "name": "kinopotok-tv",
+  "version": "1.0.0",
+  "description": "КиноПоток TV — Android TV приложение",
+  "private": true,
+  "scripts": {
+    "build": "echo 'No build step needed'"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.0",
+    "@capacitor/core": "^6.1.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.0"
+  }
+}
