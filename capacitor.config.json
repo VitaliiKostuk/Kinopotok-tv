@@ -1,0 +1,14 @@
+{
+  "appId": "com.kinopotok.tv",
+  "appName": "КиноПоток TV",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#050507"
+  },
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  }
+}
